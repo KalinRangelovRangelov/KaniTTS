@@ -92,20 +92,41 @@ export function downloadModel(
     }
   };
 
-  eventSource.onerror = () => {
+  eventSource.onerror = async () => {
     console.log('[Download] Connection closed. completed:', completed, 'lastProgress:', lastProgress?.progress_percent);
     eventSource.close();
-    // Only report error if we haven't already completed
+
+    // Only check if we haven't already completed
     if (!completed) {
-      // If download was near completion (>=95%), treat connection close as success
-      // This handles the race condition where the server closes before we receive "completed"
-      if (lastProgress && lastProgress.progress_percent >= 95) {
-        console.log('[Download] Treating as success (>=95%)');
-        onComplete();
-      } else {
-        console.log('[Download] Reporting connection lost error');
-        onError(new Error('Connection lost'));
+      // Wait a moment for any pending messages to be processed
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Check if already marked completed by onmessage handler
+      if (completed) {
+        return;
       }
+
+      // Verify the actual model status by checking with the server
+      try {
+        console.log('[Download] Checking model status...');
+        const response = await fetch(`${API_BASE}/models/${modelKey}`);
+        if (response.ok) {
+          const status = await response.json();
+          console.log('[Download] Model status:', status);
+          if (status.downloaded) {
+            console.log('[Download] Model verified as downloaded, treating as success');
+            completed = true;
+            onComplete();
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('[Download] Failed to check model status:', e);
+      }
+
+      // If we get here, the download genuinely failed
+      console.log('[Download] Reporting connection lost error');
+      onError(new Error('Connection lost'));
     }
   };
 
