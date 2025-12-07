@@ -1,4 +1,5 @@
 fastapi==0.115.5
+pydantic>=2.5.0
 uvicorn[standard]==0.32.0
 kani-tts>=0.0.4
 torch>=2.0.0
