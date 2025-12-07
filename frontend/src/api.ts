@@ -69,10 +69,13 @@ export function downloadModel(
 ): () => void {
   const eventSource = new EventSource(`${API_BASE}/models/${modelKey}/download`);
   let completed = false;
+  let lastProgress: any = null;
 
   eventSource.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
+      console.log('[Download] Progress:', data.progress_percent, '%', data.status);
+      lastProgress = data;
       onProgress(data);
 
       if (data.status === 'completed') {
@@ -90,10 +93,19 @@ export function downloadModel(
   };
 
   eventSource.onerror = () => {
+    console.log('[Download] Connection closed. completed:', completed, 'lastProgress:', lastProgress?.progress_percent);
     eventSource.close();
     // Only report error if we haven't already completed
     if (!completed) {
-      onError(new Error('Connection lost'));
+      // If download was near completion (>=95%), treat connection close as success
+      // This handles the race condition where the server closes before we receive "completed"
+      if (lastProgress && lastProgress.progress_percent >= 95) {
+        console.log('[Download] Treating as success (>=95%)');
+        onComplete();
+      } else {
+        console.log('[Download] Reporting connection lost error');
+        onError(new Error('Connection lost'));
+      }
     }
   };
 

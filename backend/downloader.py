@@ -27,9 +27,12 @@ class DownloadProgress:
 
     @property
     def progress_percent(self) -> float:
-        if self.total_size == 0:
-            return 0.0
-        return min(100.0, (self.downloaded_size / self.total_size) * 100)
+        # Use byte size if available, otherwise fall back to file count
+        if self.total_size > 0:
+            return min(100.0, (self.downloaded_size / self.total_size) * 100)
+        elif self.files_total > 0:
+            return min(100.0, (self.files_downloaded / self.files_total) * 100)
+        return 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -182,7 +185,11 @@ async def download_model_with_progress(model_key: str) -> AsyncGenerator[str, No
 
         progress.status = "completed"
         progress.downloaded_size = progress.total_size
+        progress.files_downloaded = progress.files_total
         yield f"data: {json.dumps(progress.to_dict())}\n\n"
+
+        # Give the client time to receive the completion message before stream ends
+        await asyncio.sleep(0.5)
 
     except GatedRepoError:
         progress.status = "error"
