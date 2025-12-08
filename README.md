@@ -10,6 +10,16 @@ A web-based text-to-speech application powered by [Kani TTS](https://github.com/
 - Node.js 18+
 - macOS with Apple Silicon (M1/M2/M3) recommended
 
+## Disk Space
+
+| Component | Size |
+|-----------|------|
+| Backend (Python venv) | ~2.7 GB |
+| Frontend (node_modules) | ~120 MB |
+| Each TTS model | ~1.4 GB |
+| **Total (1 model)** | **~4.2 GB** |
+| **Total (2 models)** | **~5.6 GB** |
+
 ## Features
 
 - Multi-language support (English, German)
