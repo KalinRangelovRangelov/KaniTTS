@@ -5,5 +5,12 @@ sse-starlette==2.1.3
 python-multipart==0.0.17
 
 # TTS - this pulls in torch, transformers, nemo-toolkit, etc.
-# nemo-toolkit requires numpy<2.0.0, so we don't override it
 kani-tts==0.0.4
+
+# ml_dtypes >= 0.5.0 required for float4_e2m1fn (model loading)
+# Use Python 3.12 to avoid numpy version conflicts
+ml_dtypes>=0.5.0
+
+# transformers from git required for lfm2 model support
+# Install with: pip install git+https://github.com/huggingface/transformers.git
+git+https://github.com/huggingface/transformers.git
