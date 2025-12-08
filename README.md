@@ -4,6 +4,12 @@ A web-based text-to-speech application powered by [Kani TTS](https://github.com/
 
 > This project was generated with [Claude Opus 4.5](https://www.anthropic.com/claude)
 
+## Requirements
+
+- **Python 3.12** (Python 3.13 has numpy/ml_dtypes compatibility issues)
+- Node.js 18+
+- macOS with Apple Silicon (M1/M2/M3) recommended
+
 ## Features
 
 - Multi-language support (English, German)
@@ -11,6 +17,7 @@ A web-based text-to-speech application powered by [Kani TTS](https://github.com/
 - Speech history with playback, download, and delete
 - Model download with progress tracking
 - Persistent history across sessions
+- Optimized for Apple Silicon (CPU inference)
 
 ## Project Structure
 
@@ -47,11 +54,18 @@ KaniTTS/
 
 ```bash
 cd backend
-python -m venv venv
+python3.12 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+
+# Install transformers from git (required for lfm2 model architecture)
+pip install --no-deps git+https://github.com/huggingface/transformers.git
+pip install "tokenizers>=0.22.0" "huggingface-hub>=1.0.0" typer-slim
+
 python main.py
 ```
+
+> **Note**: The `setup.sh` script handles all of this automatically.
 
 ### Frontend
 
@@ -98,5 +112,16 @@ npm run dev
 
 ## Tech Stack
 
-- **Backend**: Python, FastAPI, Kani TTS, PyTorch
+- **Backend**: Python 3.12, FastAPI, Kani TTS, PyTorch
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS
+
+## Troubleshooting
+
+### `module 'ml_dtypes' has no attribute 'float4_e2m1fn'`
+Ensure `ml_dtypes>=0.5.0` is installed. Run `pip install "ml_dtypes>=0.5.0"`.
+
+### `lfm2` model type not recognized
+You need transformers from git (5.0.0.dev0+) for lfm2 support. The setup script installs this automatically.
+
+### numpy version conflicts on Python 3.13
+Use Python 3.12 instead. Python 3.13 has incompatible numpy requirements between ml_dtypes and megatron-core.
