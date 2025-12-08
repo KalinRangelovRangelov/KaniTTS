@@ -23,6 +23,7 @@ pip install -r requirements.txt
 # Required for lfm2 model architecture support
 echo "Installing transformers from git for lfm2 support..."
 pip install --no-deps git+https://github.com/huggingface/transformers.git
+pip install "tokenizers>=0.22.0" "huggingface-hub>=1.0.0" typer-slim
 cd ..
 
 # Frontend setup
