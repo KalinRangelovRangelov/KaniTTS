@@ -18,6 +18,11 @@ fi
 source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
+
+# Install transformers from git (after main deps to avoid conflicts)
+# Required for lfm2 model architecture support
+echo "Installing transformers from git for lfm2 support..."
+pip install --no-deps git+https://github.com/huggingface/transformers.git
 cd ..
 
 # Frontend setup

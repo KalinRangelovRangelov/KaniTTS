@@ -11,6 +11,5 @@ kani-tts==0.0.4
 # Use Python 3.12 to avoid numpy version conflicts
 ml_dtypes>=0.5.0
 
-# transformers from git required for lfm2 model support
-# Install with: pip install git+https://github.com/huggingface/transformers.git
-git+https://github.com/huggingface/transformers.git
+# NOTE: transformers from git is installed separately in setup.sh
+# (after main deps) for lfm2 model support
