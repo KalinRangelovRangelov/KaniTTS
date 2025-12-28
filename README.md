@@ -29,7 +29,7 @@ Then open http://localhost:5173 in your browser.
 |-----------|------|
 | Backend (Python venv) | ~2.7 GB |
 | Frontend (node_modules) | ~120 MB |
-| English model (kani-tts-400m-en) | ~750 MB |
+| English model (kani-tts-400m-en) | ~720 MB |
 | German model (kani-tts-370m) | ~1.4 GB |
 | **Total (both models)** | **~5 GB** |
 
