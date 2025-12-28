@@ -113,19 +113,27 @@ export function ModelCard({ model, isSelected, onSelect, onModelUpdate }: ModelC
           <div className="mb-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-slate-400">Downloading...</span>
-              <span className="text-indigo-400 font-medium">{progress.progress_percent}%</span>
+              {progress.progress_percent >= 0 ? (
+                <span className="text-indigo-400 font-medium">{progress.progress_percent}%</span>
+              ) : (
+                <span className="text-slate-500 text-xs">Size unknown</span>
+              )}
             </div>
             <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300 relative"
-                style={{ width: `${progress.progress_percent}%` }}
-              >
-                <div className="absolute inset-0 shimmer" />
-              </div>
+              {progress.progress_percent >= 0 ? (
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300 relative"
+                  style={{ width: `${progress.progress_percent}%` }}
+                >
+                  <div className="absolute inset-0 shimmer" />
+                </div>
+              ) : (
+                <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-indeterminate" />
+              )}
             </div>
             <div className="flex justify-between text-xs text-slate-500">
               <span>{formatBytes(progress.downloaded_size)}</span>
-              <span>{formatBytes(progress.total_size)}</span>
+              {progress.total_size > 0 && <span>{formatBytes(progress.total_size)}</span>}
             </div>
             {progress.current_file && (
               <p className="text-xs text-slate-500 truncate">

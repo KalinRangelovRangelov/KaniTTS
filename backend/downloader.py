@@ -27,12 +27,13 @@ class DownloadProgress:
 
     @property
     def progress_percent(self) -> float:
-        # Use byte size if available, otherwise fall back to file count
+        # Only use byte size for accurate progress - file count is unreliable
+        # because files are created before they're fully downloaded
         if self.total_size > 0:
             return min(100.0, (self.downloaded_size / self.total_size) * 100)
-        elif self.files_total > 0:
-            return min(100.0, (self.files_downloaded / self.files_total) * 100)
-        return 0.0
+        # If we don't have total_size, return -1 to indicate indeterminate progress
+        # The frontend should show a spinner or indeterminate progress bar
+        return -1.0
 
     def to_dict(self) -> dict:
         return {
@@ -131,20 +132,33 @@ async def download_model_with_progress(model_key: str) -> AsyncGenerator[dict, N
     await asyncio.sleep(0.1)
 
     try:
-        # Get repo info for file sizes
+        # Get repo info for file sizes using list_repo_tree for accurate sizes
         logger.info(f"Getting repo info for {model['repo_id']}")
 
         def get_repo_info():
             api = HfApi()
-            return api.repo_info(repo_id=model["repo_id"], repo_type="model")
+            # Use list_repo_tree to get accurate file sizes (repo_info.siblings often has None sizes)
+            try:
+                files = list(api.list_repo_tree(
+                    repo_id=model["repo_id"],
+                    repo_type="model",
+                    recursive=True,
+                ))
+                # Filter to only files (not directories)
+                files = [f for f in files if hasattr(f, 'size') and f.size is not None]
+                return files
+            except Exception as e:
+                logger.warning(f"list_repo_tree failed, falling back to repo_info: {e}")
+                # Fallback to repo_info
+                repo_info = api.repo_info(repo_id=model["repo_id"], repo_type="model")
+                return repo_info.siblings or []
 
         loop = asyncio.get_event_loop()
-        repo_info = await loop.run_in_executor(None, get_repo_info)
+        files = await loop.run_in_executor(None, get_repo_info)
 
         # Calculate total size
-        siblings = repo_info.siblings or []
-        progress.files_total = len(siblings)
-        progress.total_size = sum(s.size or 0 for s in siblings)
+        progress.files_total = len(files)
+        progress.total_size = sum(getattr(f, 'size', 0) or 0 for f in files)
 
         logger.info(f"Total size: {progress.total_size}, files: {progress.files_total}")
 

@@ -1,13 +1,58 @@
 import io
+import re
 import uuid
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import torch
 
 from config import MODELS, OUTPUT_DIR, SAMPLE_RATE, SPEAKERS
 from downloader import is_model_downloaded
+
+
+# Maximum characters per chunk to avoid hitting model's token limit
+# The model has max_new_tokens=1200, which roughly corresponds to ~10-15 seconds of audio
+# Shorter chunks (~150-200 chars) work more reliably
+MAX_CHUNK_CHARS = 200
+
+
+def split_into_sentences(text: str) -> List[str]:
+    """
+    Split text into sentences for chunked TTS generation.
+    Handles German and English punctuation patterns.
+    """
+    # Normalize whitespace
+    text = " ".join(text.split())
+
+    # Split on sentence-ending punctuation followed by space or end
+    # This regex handles: . ! ? and German quotation patterns
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+
+    # Filter empty strings and strip whitespace
+    sentences = [s.strip() for s in sentences if s.strip()]
+
+    # Further split long sentences that exceed MAX_CHUNK_CHARS
+    chunks = []
+    for sentence in sentences:
+        if len(sentence) <= MAX_CHUNK_CHARS:
+            chunks.append(sentence)
+        else:
+            # Split long sentences on commas, semicolons, or dashes
+            sub_parts = re.split(r'(?<=[,;–—])\s+', sentence)
+            current_chunk = ""
+            for part in sub_parts:
+                if len(current_chunk) + len(part) + 1 <= MAX_CHUNK_CHARS:
+                    current_chunk = (current_chunk + " " + part).strip() if current_chunk else part
+                else:
+                    if current_chunk:
+                        chunks.append(current_chunk)
+                    # If single part is still too long, just add it anyway
+                    current_chunk = part
+            if current_chunk:
+                chunks.append(current_chunk)
+
+    return chunks if chunks else [text]
 
 
 class TTSService:
@@ -101,15 +146,36 @@ class TTSService:
             speaker_id = speaker or self.DEFAULT_SPEAKERS.get(model_key)
             print(f"[TTS] Generating with speaker_id={speaker_id} (requested: {speaker})")
 
-            # Generate audio
-            audio, _ = model(text, speaker_id=speaker_id)
+            # Split text into chunks to avoid hitting model's token limit
+            chunks = split_into_sentences(text)
+            print(f"[TTS] Split text into {len(chunks)} chunks")
+
+            # Generate audio for each chunk
+            audio_arrays = []
+            for i, chunk in enumerate(chunks):
+                print(f"[TTS] Generating chunk {i+1}/{len(chunks)}: {chunk[:50]}...")
+                chunk_audio, _ = model(chunk, speaker_id=speaker_id)
+                audio_arrays.append(chunk_audio)
+
+            # Concatenate all audio chunks
+            if len(audio_arrays) == 1:
+                combined_audio = audio_arrays[0]
+            else:
+                # Add small silence between chunks for natural pauses
+                silence = np.zeros(int(SAMPLE_RATE * 0.15), dtype=np.float32)  # 150ms pause
+                combined_parts = []
+                for i, audio in enumerate(audio_arrays):
+                    combined_parts.append(audio)
+                    if i < len(audio_arrays) - 1:  # Don't add silence after last chunk
+                        combined_parts.append(silence)
+                combined_audio = np.concatenate(combined_parts)
 
             # Generate unique filename
             filename = f"output_{uuid.uuid4().hex[:8]}.wav"
             output_path = OUTPUT_DIR / filename
 
             # Save audio
-            model.save_audio(audio, str(output_path))
+            model.save_audio(combined_audio, str(output_path))
 
             # Read the file bytes
             with open(output_path, "rb") as f:

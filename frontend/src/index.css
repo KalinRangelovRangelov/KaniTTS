@@ -68,3 +68,22 @@ body {
 .waveform-bar {
   animation: wave 1s ease-in-out infinite;
 }
+
+/* Indeterminate progress bar animation */
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+    width: 50%;
+  }
+  50% {
+    width: 30%;
+  }
+  100% {
+    transform: translateX(300%);
+    width: 50%;
+  }
+}
+
+.animate-indeterminate {
+  animation: indeterminate 1.5s ease-in-out infinite;
+}
