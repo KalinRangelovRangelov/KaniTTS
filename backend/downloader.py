@@ -106,11 +106,11 @@ def _get_file_count(path: Path) -> int:
         return 0
 
 
-async def download_model_with_progress(model_key: str) -> AsyncGenerator[str, None]:
+async def download_model_with_progress(model_key: str) -> AsyncGenerator[dict, None]:
     """Download a model with progress updates via SSE."""
 
     if model_key not in MODELS:
-        yield f"data: {json.dumps({'status': 'error', 'error_message': 'Unknown model'})}\n\n"
+        yield {"data": json.dumps({'status': 'error', 'error_message': 'Unknown model'})}
         return
 
     model = MODELS[model_key]
@@ -121,11 +121,11 @@ async def download_model_with_progress(model_key: str) -> AsyncGenerator[str, No
         progress.status = "completed"
         progress.downloaded_size = 1
         progress.total_size = 1
-        yield f"data: {json.dumps(progress.to_dict())}\n\n"
+        yield {"data": json.dumps(progress.to_dict())}
         return
 
     progress.status = "downloading"
-    yield f"data: {json.dumps(progress.to_dict())}\n\n"
+    yield {"data": json.dumps(progress.to_dict())}
 
     # Small delay to ensure SSE connection is established
     await asyncio.sleep(0.1)
@@ -148,7 +148,7 @@ async def download_model_with_progress(model_key: str) -> AsyncGenerator[str, No
 
         logger.info(f"Total size: {progress.total_size}, files: {progress.files_total}")
 
-        yield f"data: {json.dumps(progress.to_dict())}\n\n"
+        yield {"data": json.dumps(progress.to_dict())}
 
         # Download in a thread to not block
         local_path = Path(model["local_path"])
@@ -173,7 +173,7 @@ async def download_model_with_progress(model_key: str) -> AsyncGenerator[str, No
             progress.downloaded_size = _get_dir_size(local_path)
             progress.files_downloaded = _get_file_count(local_path)
 
-            yield f"data: {json.dumps(progress.to_dict())}\n\n"
+            yield {"data": json.dumps(progress.to_dict())}
 
         # Wait for completion and check for exceptions
         try:
@@ -186,7 +186,7 @@ async def download_model_with_progress(model_key: str) -> AsyncGenerator[str, No
         progress.status = "completed"
         progress.downloaded_size = progress.total_size
         progress.files_downloaded = progress.files_total
-        yield f"data: {json.dumps(progress.to_dict())}\n\n"
+        yield {"data": json.dumps(progress.to_dict())}
 
         # Give the client time to receive the completion message before stream ends
         await asyncio.sleep(0.5)
@@ -194,13 +194,13 @@ async def download_model_with_progress(model_key: str) -> AsyncGenerator[str, No
     except GatedRepoError:
         progress.status = "error"
         progress.error_message = "This model requires authentication. Please log in to Hugging Face."
-        yield f"data: {json.dumps(progress.to_dict())}\n\n"
+        yield {"data": json.dumps(progress.to_dict())}
     except RepositoryNotFoundError:
         progress.status = "error"
         progress.error_message = "Model repository not found."
-        yield f"data: {json.dumps(progress.to_dict())}\n\n"
+        yield {"data": json.dumps(progress.to_dict())}
     except Exception as e:
         logger.exception(f"Download error: {e}")
         progress.status = "error"
         progress.error_message = str(e)
-        yield f"data: {json.dumps(progress.to_dict())}\n\n"
+        yield {"data": json.dumps(progress.to_dict())}
